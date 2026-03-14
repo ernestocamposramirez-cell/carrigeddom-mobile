@@ -20,6 +20,7 @@ body, html {
     font-family: 'Press Start 2P', monospace;
     overflow: hidden; /* Prevent scrolling */
     color: white;
+    touch-action: none; /* Crucial: Prevent browser gestures */
 }
 
 #game-container {
@@ -36,6 +37,9 @@ canvas {
     display: block;
     image-rendering: pixelated; /* Essential for that retro look */
     z-index: 1;
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain; /* Mantener relación de aspecto si es necesario */
 }
 
 /* CRT Scanline Effect */
