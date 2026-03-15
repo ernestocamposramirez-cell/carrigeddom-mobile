@@ -246,3 +246,90 @@ canvas {
     0% { top: 100%; }
     100% { top: -450%; } /* Adjust based on content length */
 }
+
+/* Mobile HUD Controls */
+#mobile-controls {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 30;
+    pointer-events: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    padding: 30px;
+}
+
+.mobile-btn {
+    width: 90px;
+    height: 90px;
+    background: rgba(255, 0, 85, 0.2);
+    border: 4px solid rgba(255, 0, 85, 0.4);
+    border-radius: 50%;
+    color: white;
+    font-size: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    pointer-events: auto;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    transition: background 0.1s;
+}
+
+.mobile-btn:active {
+    background: rgba(255, 0, 85, 0.6);
+}
+
+#joystick-area {
+    position: relative;
+    width: 160px;
+    height: 160px;
+    background: rgba(0, 255, 170, 0.1);
+    border: 2px solid rgba(0, 255, 170, 0.2);
+    border-radius: 50%;
+    pointer-events: auto;
+}
+
+.joy-btn {
+    position: absolute;
+    width: 55px;
+    height: 55px;
+    background: rgba(0, 255, 170, 0.2);
+    border: 3px solid rgba(0, 255, 170, 0.3);
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: background 0.1s;
+    pointer-events: none; /* Let parent handle logic */
+}
+
+.joy-btn.active {
+    background: rgba(0, 255, 170, 0.6);
+}
+
+#btn-up { top: 5px; left: 50%; transform: translateX(-50%); }
+#btn-down { bottom: 5px; left: 50%; transform: translateX(-50%); }
+#btn-left { left: 5px; top: 50%; transform: translateY(-50%); }
+#btn-right { right: 5px; top: 50%; transform: translateY(-50%); }
+
+/* Arrow tips for joystick buttons */
+.joy-btn::after {
+    content: '';
+    width: 0;
+    height: 0;
+    border-style: solid;
+}
+
+#btn-up::after { border-width: 0 10px 15px 10px; border-color: transparent transparent white transparent; }
+#btn-down::after { border-width: 15px 10px 0 10px; border-color: white transparent transparent transparent; }
+#btn-left::after { border-width: 10px 15px 10px 0; border-color: transparent white transparent transparent; }
+#btn-right::after { border-width: 10px 0 10px 15px; border-color: transparent transparent transparent white; }
+
+/* Hide mobile controls on desktop (optional, but keep for now as requested) */
+@media (min-width: 1024px) {
+    /* #mobile-controls { display: none; } */
+}

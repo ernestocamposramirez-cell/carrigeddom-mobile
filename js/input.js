@@ -14,19 +14,91 @@ class InputHandler {
             AltRight: false
         };
 
-        // Touch/Pointer state
-        this.touchStartX = 0;
-        this.isPointerDown = false;
-        this.steeringThreshold = 20; // px
-
         window.addEventListener('keydown', (e) => this.handleKeyDown(e));
         window.addEventListener('keyup', (e) => this.handleKeyUp(e));
 
-        // Pointer Events for Mobile/Mouse
-        window.addEventListener('pointerdown', (e) => this.handlePointerDown(e));
-        window.addEventListener('pointermove', (e) => this.handlePointerMove(e));
-        window.addEventListener('pointerup', (e) => this.handlePointerUp(e));
-        window.addEventListener('pointercancel', (e) => this.handlePointerUp(e));
+        // Initialize HUD controls if they exist
+        this.initMobileHUD();
+    }
+
+    initMobileHUD() {
+        const joystickArea = document.getElementById('joystick-area');
+        const handbrakeBtn = document.getElementById('handbrake-btn');
+
+        if (handbrakeBtn) {
+            const press = (e) => { e.preventDefault(); this.keys.Space = true; };
+            const release = (e) => { e.preventDefault(); this.keys.Space = false; };
+            handbrakeBtn.addEventListener('pointerdown', press);
+            handbrakeBtn.addEventListener('pointerup', release);
+            handbrakeBtn.addEventListener('pointerleave', release);
+            handbrakeBtn.addEventListener('pointercancel', release);
+        }
+
+        if (joystickArea) {
+            const handleJoystick = (e) => {
+                e.preventDefault();
+                const rect = joystickArea.getBoundingClientRect();
+                const centerX = rect.left + rect.width / 2;
+                const centerY = rect.top + rect.height / 2;
+                
+                const dx = e.clientX - centerX;
+                const dy = e.clientY - centerY;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                
+                const deadzone = 15;
+                const activeZone = 10; // Threshold to register movement
+
+                // Reset directional keys before updating
+                this.keys.ArrowUp = false;
+                this.keys.ArrowDown = false;
+                this.keys.ArrowLeft = false;
+                this.keys.ArrowRight = false;
+
+                // Visual reset
+                const btns = joystickArea.querySelectorAll('.joy-btn');
+                btns.forEach(b => b.classList.remove('active'));
+
+                if (dist > deadzone) {
+                    // Check horizontal (Left/Right)
+                    if (dx > activeZone) {
+                        this.keys.ArrowRight = true;
+                        document.getElementById('btn-right')?.classList.add('active');
+                    }
+                    if (dx < -activeZone) {
+                        this.keys.ArrowLeft = true;
+                        document.getElementById('btn-left')?.classList.add('active');
+                    }
+                    
+                    // Check vertical (Up/Down)
+                    if (dy > activeZone) {
+                        this.keys.ArrowDown = true;
+                        document.getElementById('btn-down')?.classList.add('active');
+                    }
+                    if (dy < -activeZone) {
+                        this.keys.ArrowUp = true;
+                        document.getElementById('btn-up')?.classList.add('active');
+                    }
+                }
+            };
+
+            const stopJoystick = (e) => {
+                e.preventDefault();
+                this.keys.ArrowUp = false;
+                this.keys.ArrowDown = false;
+                this.keys.ArrowLeft = false;
+                this.keys.ArrowRight = false;
+                joystickArea.querySelectorAll('.joy-btn').forEach(b => b.classList.remove('active'));
+            };
+
+            joystickArea.addEventListener('pointerdown', handleJoystick);
+            joystickArea.addEventListener('pointermove', (e) => {
+                // Only process moves if the pointer is "active" (optional safety)
+                if (e.buttons > 0) handleJoystick(e);
+            });
+            joystickArea.addEventListener('pointerup', stopJoystick);
+            joystickArea.addEventListener('pointerleave', stopJoystick);
+            joystickArea.addEventListener('pointercancel', stopJoystick);
+        }
     }
 
     handleKeyDown(e) {
@@ -39,46 +111,6 @@ class InputHandler {
         if (this.keys.hasOwnProperty(e.code)) {
             this.keys[e.code] = false;
         }
-    }
-
-    handlePointerDown(e) {
-        this.isPointerDown = true;
-        this.touchStartX = e.clientX;
-        this.keys.ArrowUp = true; // Auto-accelerate on touch
-    }
-
-    handlePointerMove(e) {
-        if (!this.isPointerDown) return;
-
-        const deltaX = e.clientX - this.touchStartX;
-
-        // Dynamic Steering
-        if (deltaX > this.steeringThreshold) {
-            this.keys.ArrowRight = true;
-            this.keys.ArrowLeft = false;
-        } else if (deltaX < -this.steeringThreshold) {
-            this.keys.ArrowLeft = true;
-            this.keys.ArrowRight = false;
-        } else {
-            this.keys.ArrowLeft = false;
-            this.keys.ArrowRight = false;
-        }
-    }
-
-    handlePointerUp(e) {
-        this.isPointerDown = false;
-        this.keys.ArrowUp = false;
-        this.keys.ArrowLeft = false;
-        this.keys.ArrowRight = false;
-
-        // Brief braking for natural feel
-        this.keys.ArrowDown = true;
-        setTimeout(() => {
-            // Only release ArrowDown if pointer is still up
-            if (!this.isPointerDown) {
-                this.keys.ArrowDown = false;
-            }
-        }, 200);
     }
 }
 
