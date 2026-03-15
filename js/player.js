@@ -50,9 +50,11 @@ class Cart extends PhysicsBody {
         let moving = false;
 
         // 1. Get Target Direction (Absolute)
-        if (inputMap.joystick && inputMap.joystick.active) {
-            targetDX = inputMap.joystick.x;
-            targetDY = inputMap.joystick.y;
+        const globalJoystick = typeof input !== 'undefined' ? input.joystick : null;
+        
+        if (globalJoystick && globalJoystick.active) {
+            targetDX = globalJoystick.x;
+            targetDY = globalJoystick.y;
             moving = true;
         } else {
             // Keyboard Absolute Mapping

@@ -347,7 +347,15 @@ class Game {
             sx = (Math.random() - 0.5) * 15;
             sy = (Math.random() - 0.5) * 15;
         }
-        this.ctx.translate(this.camera.x + sx, this.camera.y + sy);
+
+        // Zoom out on mobile devices for better visibility
+        const isMobile = window.innerWidth <= 768; // Or detect by touch
+        const zoom = isMobile ? 0.65 : 1.0;
+
+        // Apply scale around the screen center, then apply camera and shake
+        this.ctx.translate(this.width / 2, this.height / 2);
+        this.ctx.scale(zoom, zoom);
+        this.ctx.translate(-this.width / 2 + this.camera.x + sx, -this.height / 2 + this.camera.y + sy);
 
         // Suelo texturizado
         if (this.floorTexture.complete && this.floorTexture.width > 0) {
