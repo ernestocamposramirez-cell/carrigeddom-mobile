@@ -45,46 +45,59 @@ class Cart extends PhysicsBody {
             this.velocity = new Vector2(0, 0);
         }
 
-        const currentSpeed = this.velocity.mag();
-        const turnEffectiveness = clamp(currentSpeed / this.maxSpeed, 0.2, 1.0);
-        let actualTurnSpeed = this.turnSpeed * turnEffectiveness;
+        let targetDX = 0;
+        let targetDY = 0;
+        let moving = false;
 
-        if (inputMap.ArrowLeft) this.angle -= actualTurnSpeed;
-        if (inputMap.ArrowRight) this.angle += actualTurnSpeed;
+        // 1. Get Target Direction (Absolute)
+        if (inputMap.joystick && inputMap.joystick.active) {
+            targetDX = inputMap.joystick.x;
+            targetDY = inputMap.joystick.y;
+            moving = true;
+        } else {
+            // Keyboard Absolute Mapping
+            if (inputMap.ArrowUp) targetDY -= 1;
+            if (inputMap.ArrowDown) targetDY += 1;
+            if (inputMap.ArrowLeft) targetDX -= 1;
+            if (inputMap.ArrowRight) targetDX += 1;
+            
+            if (targetDX !== 0 || targetDY !== 0) {
+                moving = true;
+                // Normalize keyboard diagonal
+                const mag = Math.sqrt(targetDX * targetDX + targetDY * targetDY);
+                targetDX /= mag;
+                targetDY /= mag;
+            }
+        }
 
-        if (inputMap.ArrowUp) {
-            let force = new Vector2(Math.cos(this.angle), Math.sin(this.angle));
+        // 2. Process Movement and Rotation
+        if (moving) {
+            const targetAngle = Math.atan2(targetDY, targetDX);
+            
+            // Smoothly interpolate angle
+            const angleDiff = Math.atan2(Math.sin(targetAngle - this.angle), Math.cos(targetAngle - this.angle));
+            
+            // Turning is faster when braking or at lower speeds for maneuverability
+            let rotSpeed = 0.15; 
+            if (inputMap.Space) rotSpeed = 0.3; // "Handbrake" drift turn
+            
+            this.angle += angleDiff * rotSpeed;
+
+            // Apply force in the target absolute direction
+            let force = new Vector2(targetDX, targetDY);
             force = force.mult(this.speed * this.mass);
             this.applyForce(force);
         }
 
-        if (inputMap.ArrowDown) {
-            if (this.hasAnchor && this.powerupTimers.anchor > 0) {
-                this.velocity = new Vector2(0, 0); 
-            } else {
-                let forwardDir = new Vector2(Math.cos(this.angle), Math.sin(this.angle));
-                let forwardSpeed = this.velocity.dot(forwardDir);
-                if (forwardSpeed > 0.5) {
-                    let brakeForce = this.velocity.mult(-0.05 * this.mass); 
-                    this.applyForce(brakeForce);
-                } else {
-                    let reverseSpeed = this.speed * 0.5; 
-                    let reverseForce = forwardDir.mult(-reverseSpeed * this.mass);
-                    this.applyForce(reverseForce);
-                }
+        // 3. Handbrake / Friction Logic
+        if (inputMap.Space) {
+            this.velocity = this.velocity.mult(0.92); // Drag
+            if (this.velocity.magSq() > 5) {
+                spawnSmoke(this.position.x, this.position.y);
             }
         }
 
-        if (inputMap.Space) {
-             actualTurnSpeed *= 2.2; 
-             if (inputMap.ArrowLeft) this.angle -= actualTurnSpeed;
-             if (inputMap.ArrowRight) this.angle += actualTurnSpeed;
-             this.velocity = this.velocity.mult(0.93); 
-             if (this.velocity.magSq() > 5) {
-                 spawnSmoke(this.position.x, this.position.y);
-             }
-        }
-
+        // Speed Limit
         if (this.velocity.magSq() > this.maxSpeed * this.maxSpeed) {
             this.velocity = this.velocity.limit(this.maxSpeed);
         }

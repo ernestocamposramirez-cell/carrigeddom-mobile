@@ -14,6 +14,12 @@ class InputHandler {
             AltRight: false
         };
 
+        this.joystick = {
+            x: 0,
+            y: 0,
+            active: false
+        };
+
         window.addEventListener('keydown', (e) => this.handleKeyDown(e));
         window.addEventListener('keyup', (e) => this.handleKeyUp(e));
 
@@ -35,69 +41,80 @@ class InputHandler {
         }
 
         if (joystickArea) {
+            const knob = document.getElementById('joystick-knob');
+            
             const handleJoystick = (e) => {
                 e.preventDefault();
                 const rect = joystickArea.getBoundingClientRect();
                 const centerX = rect.left + rect.width / 2;
                 const centerY = rect.top + rect.height / 2;
                 
-                const dx = e.clientX - centerX;
-                const dy = e.clientY - centerY;
+                let dx = e.clientX - centerX;
+                let dy = e.clientY - centerY;
                 const dist = Math.sqrt(dx * dx + dy * dy);
                 
-                const deadzone = 15;
-                const activeZone = 10; // Threshold to register movement
-
-                // Reset directional keys before updating
-                this.keys.ArrowUp = false;
-                this.keys.ArrowDown = false;
-                this.keys.ArrowLeft = false;
-                this.keys.ArrowRight = false;
-
-                // Visual reset
-                const btns = joystickArea.querySelectorAll('.joy-btn');
-                btns.forEach(b => b.classList.remove('active'));
+                const maxDist = rect.width / 2;
+                const deadzone = 10;
 
                 if (dist > deadzone) {
-                    // Check horizontal (Left/Right)
-                    if (dx > activeZone) {
-                        this.keys.ArrowRight = true;
-                        document.getElementById('btn-right')?.classList.add('active');
-                    }
-                    if (dx < -activeZone) {
-                        this.keys.ArrowLeft = true;
-                        document.getElementById('btn-left')?.classList.add('active');
-                    }
+                    this.joystick.active = true;
+                    // Normalize the vector
+                    this.joystick.x = dx / dist;
+                    this.joystick.y = dy / dist;
                     
-                    // Check vertical (Up/Down)
-                    if (dy > activeZone) {
-                        this.keys.ArrowDown = true;
-                        document.getElementById('btn-down')?.classList.add('active');
+                    // Cap distance to the visual radius if needed for sensitivity
+                    const power = Math.min(dist / maxDist, 1.0);
+                    this.joystick.x *= power;
+                    this.joystick.y *= power;
+
+                    // Move Knob Visually
+                    if (knob) {
+                        const moveX = this.joystick.x * maxDist;
+                        const moveY = this.joystick.y * maxDist;
+                        knob.style.transform = `translate(calc(-50% + ${moveX}px), calc(-50% + ${moveY}px))`;
+                        knob.style.background = 'rgba(0, 255, 170, 0.6)';
                     }
-                    if (dy < -activeZone) {
-                        this.keys.ArrowUp = true;
-                        document.getElementById('btn-up')?.classList.add('active');
+
+                    // Visual feedback: Highlight arrows based on major direction
+                    const btns = joystickArea.querySelectorAll('.joy-btn');
+                    btns.forEach(b => b.classList.remove('active'));
+                    
+                    if (Math.abs(this.joystick.x) > 0.4) {
+                        if (this.joystick.x > 0) document.getElementById('btn-right')?.classList.add('active');
+                        else document.getElementById('btn-left')?.classList.add('active');
                     }
+                    if (Math.abs(this.joystick.y) > 0.4) {
+                        if (this.joystick.y > 0) document.getElementById('btn-down')?.classList.add('active');
+                        else document.getElementById('btn-up')?.classList.add('active');
+                    }
+                } else {
+                    this.stopJoystick();
                 }
             };
 
-            const stopJoystick = (e) => {
-                e.preventDefault();
-                this.keys.ArrowUp = false;
-                this.keys.ArrowDown = false;
-                this.keys.ArrowLeft = false;
-                this.keys.ArrowRight = false;
-                joystickArea.querySelectorAll('.joy-btn').forEach(b => b.classList.remove('active'));
-            };
-
-            joystickArea.addEventListener('pointerdown', handleJoystick);
+            joystickArea.addEventListener('pointerdown', (e) => handleJoystick(e));
             joystickArea.addEventListener('pointermove', (e) => {
-                // Only process moves if the pointer is "active" (optional safety)
-                if (e.buttons > 0) handleJoystick(e);
+                if (e.buttons > 0 || e.pointerType === 'touch') handleJoystick(e);
             });
-            joystickArea.addEventListener('pointerup', stopJoystick);
-            joystickArea.addEventListener('pointerleave', stopJoystick);
-            joystickArea.addEventListener('pointercancel', stopJoystick);
+            joystickArea.addEventListener('pointerup', (e) => this.stopJoystick(e));
+            joystickArea.addEventListener('pointerleave', (e) => this.stopJoystick(e));
+            joystickArea.addEventListener('pointercancel', (e) => this.stopJoystick(e));
+        }
+    }
+
+    stopJoystick(e) {
+        if (e) e.preventDefault();
+        this.joystick.active = false;
+        this.joystick.x = 0;
+        this.joystick.y = 0;
+        const joystickArea = document.getElementById('joystick-area');
+        const knob = document.getElementById('joystick-knob');
+        if (knob) {
+            knob.style.transform = `translate(-50%, -50%)`;
+            knob.style.background = 'rgba(0, 255, 170, 0.3)';
+        }
+        if (joystickArea) {
+            joystickArea.querySelectorAll('.joy-btn').forEach(b => b.classList.remove('active'));
         }
     }
 
