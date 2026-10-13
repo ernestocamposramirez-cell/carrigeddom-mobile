@@ -99,94 +99,109 @@ class Game {
     // setupStartListener
     //
     // FLUJO:
-    //  1) La página carga → se muestra #intro-screen con overlay "TOCA PARA COMENZAR"
-    //  2) Primer tap/clic → AudioContext.resume() + introTheme.play() + video.play()
-    //                       Se oculta el overlay de tap
-    //  3) Video termina → fade-out de #intro-screen, se muestra #main-menu
+    //  1) La página carga → se muestra #intro-screen con botón "TOCA PARA COMENZAR"
+    //  2) Tap/clic en el botón → AudioContext.resume() + introTheme.play() + video.play()
+    //                            Se oculta el botón; el vídeo corre a pantalla completa
+    //  3) Vídeo termina → fade-out de #intro-screen, aparece #main-menu
     //                     la música de intro sigue sonando
-    //  4) Segundo tap/tecla → stopIntroTheme(fade) + audioManager.start() (bgMusic)
-    //                         se oculta el menú y empieza la partida
+    //  4) Tap/tecla en el menú → stopIntroTheme(fade) + bgMusic + empieza partida
     // ──────────────────────────────────────────────────────────────────────────
     setupStartListener() {
         const introScreen  = document.getElementById('intro-screen');
         const introVideo   = document.getElementById('intro-video');
         const introOverlay = document.getElementById('intro-tap-overlay');
 
-        // Ocultamos la pantalla de game-over desde el principio
         if (this.powerupEl) this.powerupEl.style.display = 'none';
 
-        // ── Fase 2: Primer gesto → arrancar intro ──────────────────────────────
-        const startIntro = async () => {
-            window.removeEventListener('keydown', startIntro);
-            window.removeEventListener('pointerdown', startIntro);
+        // ── Fase 2: el overlay actúa como botón real ───────────────────────────
+        // Usamos touchstart + click directamente sobre el overlay para máxima
+        // compatibilidad móvil y evitar que el juego intercepte el evento.
+        let introStarted = false;
+        const startIntro = async (e) => {
+            if (introStarted) return;
+            introStarted = true;
+            if (e && e.preventDefault) e.preventDefault();
+            if (e && e.stopPropagation) e.stopPropagation();
 
             // Desbloquear AudioContext (política de autoplay del navegador)
             if (window.audioManager) {
-                if (window.audioManager.ctx.state === 'suspended') {
-                    await window.audioManager.ctx.resume();
-                }
-                // Buffer silencioso de desbloqueo
                 try {
+                    if (window.audioManager.ctx.state === 'suspended') {
+                        await window.audioManager.ctx.resume();
+                    }
+                    // Buffer silencioso de desbloqueo
                     const silentBuf = window.audioManager.ctx.createBuffer(1, 1, window.audioManager.ctx.sampleRate);
                     const silentSrc = window.audioManager.ctx.createBufferSource();
                     silentSrc.buffer = silentBuf;
                     silentSrc.connect(window.audioManager.ctx.destination);
                     silentSrc.start(0);
-                } catch(e) {}
+                } catch(err) {}
 
-                // Arrancar música de intro
                 window.audioManager.playIntroTheme();
             }
 
-            // Ocultar overlay "TOCA PARA COMENZAR" y reproducir vídeo (sin mute ya no es necesario)
+            // Ocultar el overlay-botón y lanzar el vídeo
             if (introOverlay) introOverlay.style.display = 'none';
             if (introVideo) {
-                introVideo.play().catch(err => console.warn('Intro video play error:', err));
+                introVideo.play().catch(err => console.warn('Intro video:', err));
             }
         };
 
-        window.addEventListener('keydown', startIntro);
-        window.addEventListener('pointerdown', startIntro);
+        // Adjuntamos los listeners al overlay (actúa como botón)
+        if (introOverlay) {
+            introOverlay.addEventListener('touchstart', startIntro, { passive: false });
+            introOverlay.addEventListener('click', startIntro);
+        }
+        // Fallback para teclado (escritorio)
+        const keyStartIntro = (e) => { if (!introStarted) startIntro(e); };
+        window.addEventListener('keydown', keyStartIntro);
 
         // ── Fase 3: Vídeo termina → mostrar menú ──────────────────────────────
-        if (introVideo) {
-            introVideo.addEventListener('ended', () => {
-                // Fade-out de la pantalla de intro
-                if (introScreen) {
-                    introScreen.classList.add('hidden');
-                    // Eliminar del DOM tras la transición para liberar memoria
-                    setTimeout(() => {
-                        if (introScreen.parentNode) introScreen.parentNode.removeChild(introScreen);
-                    }, 700);
+        const onVideoEnd = () => {
+            window.removeEventListener('keydown', keyStartIntro);
+
+            if (introScreen) {
+                introScreen.classList.add('hidden');
+                setTimeout(() => {
+                    if (introScreen.parentNode) introScreen.parentNode.removeChild(introScreen);
+                }, 700);
+            }
+            if (this.menuEl) this.menuEl.style.display = 'flex';
+
+            // ── Fase 4: tap/tecla en el menú → iniciar partida ────────────────
+            let gameStarted = false;
+            const startGame = async (e) => {
+                if (gameStarted || this.audioStarted) return;
+                gameStarted = true;
+                this.audioStarted = true;
+                if (e && e.preventDefault) e.preventDefault();
+
+                if (window.audioManager) {
+                    window.audioManager.stopIntroTheme(1200);
+                    window.audioManager.enabled = true;
+                    window.audioManager.playBackgroundMusic();
                 }
-                // Mostrar menú principal
-                if (this.menuEl) this.menuEl.style.display = 'flex';
 
-                // ── Fase 4: Gesto en el menú → iniciar partida ────────────────
-                const startGame = async () => {
-                    if (this.audioStarted) return;
-                    this.audioStarted = true;
+                if (this.powerupEl) this.powerupEl.style.display = 'none';
+                if (this.menuEl)    this.menuEl.style.display    = 'none';
+            };
 
-                    window.removeEventListener('keydown', startGame);
-                    window.removeEventListener('pointerdown', startGame);
+            // Listener sobre el menú completo (toda la pantalla) + teclado
+            if (this.menuEl) {
+                this.menuEl.addEventListener('touchstart', startGame, { passive: false });
+                this.menuEl.addEventListener('click', startGame);
+            }
+            window.addEventListener('keydown', startGame);
+        };
 
-                    // Fade-out de la música de intro y arranque de bgMusic
-                    if (window.audioManager) {
-                        window.audioManager.stopIntroTheme(1200);
-                        window.audioManager.enabled = true;
-                        window.audioManager.playBackgroundMusic();
-                    }
-
-                    // Ocultar menú
-                    if (this.powerupEl) this.powerupEl.style.display = 'none';
-                    if (this.menuEl) this.menuEl.style.display = 'none';
-                };
-
-                window.addEventListener('keydown', startGame);
-                window.addEventListener('pointerdown', startGame);
-            });
+        if (introVideo) {
+            introVideo.addEventListener('ended', onVideoEnd);
+        } else {
+            // Si no hay vídeo por algún motivo, ir directo al menú
+            onVideoEnd();
         }
     }
+
 
     buildLevel() {
         const size = 3000;

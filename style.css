@@ -87,7 +87,7 @@ canvas {
     display: block;
 }
 
-/* Overlay de "toca para empezar" antes del primer gesto */
+/* Overlay-botón "TOCA PARA COMENZAR" — cubre toda la pantalla, cursor pointer */
 #intro-tap-overlay {
     position: absolute;
     top: 0;
@@ -95,26 +95,32 @@ canvas {
     width: 100%;
     height: 100%;
     display: flex;
-    align-items: flex-end;
+    flex-direction: column;
+    align-items: center;
     justify-content: center;
-    padding-bottom: 10%;
-    background: rgba(0,0,0,0.55);
+    background: rgba(0, 0, 0, 0.60);
     z-index: 21;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .intro-tap-text {
     font-family: 'Press Start 2P', monospace;
-    font-size: clamp(14px, 3vw, 22px);
+    font-size: clamp(16px, 4vw, 28px);
     color: #fff;
-    text-shadow: 0 0 12px #ff0055, 2px 2px 0 #000;
-    animation: intro-blink 1s step-end infinite;
+    text-shadow: 0 0 20px #ff0055, 0 0 40px #ff0055, 2px 2px 0 #000;
+    animation: intro-blink 0.9s step-end infinite;
     text-align: center;
-    padding: 0 20px;
+    padding: 24px 36px;
+    border: 3px solid var(--primary-color);
+    box-shadow: 0 0 24px #ff0055, inset 0 0 16px rgba(255,0,85,0.15);
+    background: rgba(0,0,0,0.5);
+    pointer-events: none; /* El clic lo recibe el overlay padre */
 }
 
 @keyframes intro-blink {
     0%, 100% { opacity: 1; }
-    50%       { opacity: 0; }
+    50%       { opacity: 0.15; }
 }
 
 /* UI Layer */
