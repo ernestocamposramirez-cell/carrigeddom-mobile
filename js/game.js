@@ -95,33 +95,97 @@ class Game {
         this.buildLevel();
     }
 
-    // Lógica para iniciar audio y quitar cartel con cualquier tecla o clic
+    // ──────────────────────────────────────────────────────────────────────────
+    // setupStartListener
+    //
+    // FLUJO:
+    //  1) La página carga → se muestra #intro-screen con overlay "TOCA PARA COMENZAR"
+    //  2) Primer tap/clic → AudioContext.resume() + introTheme.play() + video.play()
+    //                       Se oculta el overlay de tap
+    //  3) Video termina → fade-out de #intro-screen, se muestra #main-menu
+    //                     la música de intro sigue sonando
+    //  4) Segundo tap/tecla → stopIntroTheme(fade) + audioManager.start() (bgMusic)
+    //                         se oculta el menú y empieza la partida
+    // ──────────────────────────────────────────────────────────────────────────
     setupStartListener() {
-        const startAction = async () => {
-            if (!this.audioStarted) {
-                this.audioStarted = true;
+        const introScreen  = document.getElementById('intro-screen');
+        const introVideo   = document.getElementById('intro-video');
+        const introOverlay = document.getElementById('intro-tap-overlay');
 
-                // audioManager.start() gestiona internamente el resume()
-                // del AudioContext, el buffer de desbloqueo y la música de fondo.
-                if (window.audioManager) {
-                    await window.audioManager.start();
+        // Ocultamos la pantalla de game-over desde el principio
+        if (this.powerupEl) this.powerupEl.style.display = 'none';
+
+        // ── Fase 2: Primer gesto → arrancar intro ──────────────────────────────
+        const startIntro = async () => {
+            window.removeEventListener('keydown', startIntro);
+            window.removeEventListener('pointerdown', startIntro);
+
+            // Desbloquear AudioContext (política de autoplay del navegador)
+            if (window.audioManager) {
+                if (window.audioManager.ctx.state === 'suspended') {
+                    await window.audioManager.ctx.resume();
                 }
+                // Buffer silencioso de desbloqueo
+                try {
+                    const silentBuf = window.audioManager.ctx.createBuffer(1, 1, window.audioManager.ctx.sampleRate);
+                    const silentSrc = window.audioManager.ctx.createBufferSource();
+                    silentSrc.buffer = silentBuf;
+                    silentSrc.connect(window.audioManager.ctx.destination);
+                    silentSrc.start(0);
+                } catch(e) {}
 
-                // Ocultar el mensaje y el menú principal
-                if (this.powerupEl) this.powerupEl.style.display = 'none';
-                if (this.menuEl) this.menuEl.style.display = 'none';
+                // Arrancar música de intro
+                window.audioManager.playIntroTheme();
+            }
 
-                // Limpiar eventos para no repetir esta lógica
-                window.removeEventListener('keydown', startAction);
-                window.removeEventListener('mousedown', startAction);
+            // Ocultar overlay "TOCA PARA COMENZAR" y reproducir vídeo (sin mute ya no es necesario)
+            if (introOverlay) introOverlay.style.display = 'none';
+            if (introVideo) {
+                introVideo.play().catch(err => console.warn('Intro video play error:', err));
             }
         };
 
-        window.addEventListener('keydown', startAction);
-        window.addEventListener('mousedown', startAction);
+        window.addEventListener('keydown', startIntro);
+        window.addEventListener('pointerdown', startIntro);
 
-        // Ocultamos inicializaciones innecesarias que ahora están en el Menú Principal
-        if (this.powerupEl) this.powerupEl.style.display = 'none';
+        // ── Fase 3: Vídeo termina → mostrar menú ──────────────────────────────
+        if (introVideo) {
+            introVideo.addEventListener('ended', () => {
+                // Fade-out de la pantalla de intro
+                if (introScreen) {
+                    introScreen.classList.add('hidden');
+                    // Eliminar del DOM tras la transición para liberar memoria
+                    setTimeout(() => {
+                        if (introScreen.parentNode) introScreen.parentNode.removeChild(introScreen);
+                    }, 700);
+                }
+                // Mostrar menú principal
+                if (this.menuEl) this.menuEl.style.display = 'flex';
+
+                // ── Fase 4: Gesto en el menú → iniciar partida ────────────────
+                const startGame = async () => {
+                    if (this.audioStarted) return;
+                    this.audioStarted = true;
+
+                    window.removeEventListener('keydown', startGame);
+                    window.removeEventListener('pointerdown', startGame);
+
+                    // Fade-out de la música de intro y arranque de bgMusic
+                    if (window.audioManager) {
+                        window.audioManager.stopIntroTheme(1200);
+                        window.audioManager.enabled = true;
+                        window.audioManager.playBackgroundMusic();
+                    }
+
+                    // Ocultar menú
+                    if (this.powerupEl) this.powerupEl.style.display = 'none';
+                    if (this.menuEl) this.menuEl.style.display = 'none';
+                };
+
+                window.addEventListener('keydown', startGame);
+                window.addEventListener('pointerdown', startGame);
+            });
+        }
     }
 
     buildLevel() {

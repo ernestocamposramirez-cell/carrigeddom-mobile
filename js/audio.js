@@ -12,6 +12,12 @@ class AudioManager {
         this.bgMusic.loop = true;
         this.bgMusic.volume = 0.4;
 
+        // --- Música de intro (reproduce durante vídeo intro y menú principal) ---
+        this.introTheme = new Audio('assets/audio/intro_theme.mp3');
+        this.introTheme.loop = false;
+        this.introTheme.volume = 0.8;
+        this._introFadeTimer = null;
+
         // --- Sonido de Chainsaw (loop mientras el powerup está activo) ---
         this.chainsawAudio = new Audio('assets/audio/chainsaw.wav');
         this.chainsawAudio.loop = true;
@@ -265,6 +271,36 @@ class AudioManager {
             default:
                 return;
         }
+    }
+
+    // ─── Intro Theme: música de intro y menú principal ────────────────────────
+
+    playIntroTheme() {
+        this.introTheme.currentTime = 0;
+        this.introTheme.volume = 0.8;
+        this.introTheme.play().catch(err => console.warn('IntroTheme audio:', err));
+    }
+
+    /**
+     * Para la música de intro con un fade-out suave.
+     * @param {number} [duration=1500] - Duración del fade en ms
+     */
+    stopIntroTheme(duration = 1500) {
+        if (this._introFadeTimer) clearInterval(this._introFadeTimer);
+        const steps = 30;
+        const stepTime = duration / steps;
+        const volStep = this.introTheme.volume / steps;
+        this._introFadeTimer = setInterval(() => {
+            if (this.introTheme.volume > volStep) {
+                this.introTheme.volume = Math.max(0, this.introTheme.volume - volStep);
+            } else {
+                this.introTheme.volume = 0;
+                this.introTheme.pause();
+                this.introTheme.currentTime = 0;
+                clearInterval(this._introFadeTimer);
+                this._introFadeTimer = null;
+            }
+        }, stepTime);
     }
 }
 

@@ -46,7 +46,4 @@ window.onload = () => {
     // Inicializamos el juego en el objeto global window
     window.game = new Game('gameCanvas');
     requestAnimationFrame(gameLoop);
-    
-    // Mostramos el mensaje inicial
-    showPowerupMessage("CLICK TO START AUDIO. DRIVE(ARROWS) TO CRASH!");
 };

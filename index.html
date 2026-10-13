@@ -23,16 +23,27 @@
 </head>
 <body>
     <div id="game-container">
+        <!-- INTRO SCREEN: Video + tap to start overlay -->
+        <div id="intro-screen">
+            <video id="intro-video" playsinline preload="auto" muted>
+                <source src="assets/video/intro.mp4" type="video/mp4">
+            </video>
+            <!-- Overlay de tap-to-start visible antes del primer gesto -->
+            <div id="intro-tap-overlay">
+                <div class="intro-tap-text">TOCA PARA COMENZAR</div>
+            </div>
+        </div>
+
         <!-- CRT scanline effect overlay -->
         <div class="crt-overlay"></div>
         
         <!-- Game UI -->
-        <div id="main-menu">
+        <div id="main-menu" style="display:none;">
             <div class="menu-content">
                 <div class="menu-title">CARRIGEDDON</div>
                 <div class="menu-instructions">
-                    HAGA CLIC PARA ACTIVAR AUDIO<br>
-                    Y PULSE CUALQUIER TECLA PARA JUGAR
+                    TOCA O PULSA CUALQUIER TECLA<br>
+                    PARA JUGAR
                 </div>
             </div>
         </div>
