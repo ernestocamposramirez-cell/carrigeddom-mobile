@@ -34,12 +34,16 @@ class Customer extends PhysicsBody {
 
         // Temporizador para evitar spam de sonido al pasar por encima
         this.stepoverCooldown = 0;
+
+        // Temporizador para que los cadáveres desaparezcan gradualmente y liberen espacio
+        this.deadTimer = 0;
     }
 
     updateNPC(dt, player) {
         if (this.stepoverCooldown > 0) this.stepoverCooldown -= dt;
 
         if (this.state === 'DEAD') {
+            this.deadTimer += dt;
             this.update(dt);
             return;
         }
@@ -128,6 +132,12 @@ class Customer extends PhysicsBody {
         ctx.translate(this.position.x, this.position.y);
         // Rotar el sprite en la dirección de movimiento del peatón
         ctx.rotate(this.angle - Math.PI / 2);
+
+        // Desvanecer suavemente el cadáver antes de desaparecer
+        if (this.state === 'DEAD' && this.deadTimer > 10000) {
+            const fade = Math.max(0, 1 - (this.deadTimer - 10000) / 4000);
+            ctx.globalAlpha = fade;
+        }
 
         ctx.imageSmoothingEnabled = false;
 

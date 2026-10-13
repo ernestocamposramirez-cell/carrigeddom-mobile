@@ -162,6 +162,23 @@ class Game {
         }
     }
 
+    spawnCustomer() {
+        // Generar en una posición aleatoria del supermercado que no esté encima del jugador
+        let spawnX = 0;
+        let spawnY = 0;
+        let attempts = 0;
+        do {
+            spawnX = Math.random() * 2400 - 1200;
+            spawnY = Math.random() * 2400 - 1200;
+            const dist = Math.hypot(spawnX - this.player.position.x, spawnY - this.player.position.y);
+            // Spawnear preferentemente fuera de la pantalla visible o a cierta distancia (> 450 px)
+            if (dist > 450 || attempts > 5) break;
+            attempts++;
+        } while (attempts < 10);
+
+        this.npcs.push(new Customer(spawnX, spawnY));
+    }
+
     addChaos(points) {
         this.chaos += points;
         if (this.scoreEl) this.scoreEl.innerText = this.chaos;
@@ -235,7 +252,28 @@ class Game {
         }
 
         for (let p of this.pickups) p.update(dt);
-        for (let npc of this.npcs) npc.updateNPC(dt, this.player);
+
+        let aliveCount = 0;
+        for (let i = this.npcs.length - 1; i >= 0; i--) {
+            const npc = this.npcs[i];
+            npc.updateNPC(dt, this.player);
+
+            if (npc.state !== 'DEAD') {
+                aliveCount++;
+            } else if (npc.deadTimer > 14000) {
+                // Eliminar cadáver tras desvanecerse (14 segundos) para mantener el rendimiento
+                this.npcs.splice(i, 1);
+            }
+        }
+
+        // Regeneración gradual de peatones para que nunca se quede vacío (objetivo: ~45 vivos)
+        this._spawnTimer = (this._spawnTimer || 0) + dt;
+        if (this._spawnTimer >= 1500) { // Cada 1.5 segundos comprueba si hace falta regenerar
+            this._spawnTimer = 0;
+            if (aliveCount < 45) {
+                this.spawnCustomer();
+            }
+        }
 
         this.handleCollisions();
 
