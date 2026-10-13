@@ -290,12 +290,22 @@ class Game {
         if (this.gameOver) return;
         this.gameOver = true;
 
+        // Limpiar powerups activos del jugador
+        if (this.player) {
+            this.player.hasChainsaws = false;
+            this.player.hasNitro = false;
+            this.player.powerupTimers.chainsaws = 0;
+            this.player.powerupTimers.nitro = 0;
+        }
+
         // 1. Mostrar pantalla de Game Over y puntuación
         if (this.gameOverEl) this.gameOverEl.style.display = 'flex';
         if (this.finalStatsEl) this.finalStatsEl.innerText = this.chaos;
+        if (this.powerupEl) this.powerupEl.style.display = 'none';
 
-        // 2. Lógica de Audio: Aplausos y luego Outro
+        // 2. Lógica de Audio: Cortar motosierra y SFX de juego, aplausos y luego Outro
         if (window.audioManager) {
+            audioManager.stopAllGameplayAudio();
             audioManager.playApplause().then(() => {
                 // El navegador espera a que termine el audio si es una promesa o usamos el evento ended
                 // Como Audio.play() devuelve una promesa de inicio, detectamos el final:

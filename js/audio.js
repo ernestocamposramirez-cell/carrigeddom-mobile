@@ -200,9 +200,32 @@ class AudioManager {
         this.comboAudio.play().catch(err => console.warn('Combo audio:', err));
     }
 
+    stopAllGameplayAudio() {
+        this.stopBackgroundMusic();
+        this.stopChainsaw();
+
+        // Parar y resetear cualquier otro efecto que pudiera estar sonando
+        const sfxList = [
+            this.nitroAudio,
+            this.laughAudio,
+            this.crashAudio,
+            this.stepoverAudio,
+            this.comboAudio,
+            ...this.panicSounds,
+            ...this.hitSounds
+        ];
+
+        sfxList.forEach(audio => {
+            if (audio) {
+                audio.pause();
+                audio.currentTime = 0;
+            }
+        });
+    }
+
     playApplause() {
         if (!this.enabled) return;
-        this.stopBackgroundMusic();
+        this.stopAllGameplayAudio();
         this.applauseAudio.currentTime = 0;
         return this.applauseAudio.play().catch(err => console.warn('Applause audio:', err));
     }
